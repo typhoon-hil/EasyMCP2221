@@ -2102,7 +2102,7 @@ class Device:
 
 
 
-    def I2C_read(self, addr, size = 1, kind = "regular", timeout_ms = 20):
+    def I2C_read(self, addr, size = 1, kind = "regular", timeout_ms = 50):
         """ Read data from I2C bus.
 
         Valid values for ``kind`` are:
@@ -2223,7 +2223,6 @@ class Device:
         rbuf = self.send_cmd(buf)
 
         if rbuf[RESPONSE_STATUS_BYTE] != RESPONSE_RESULT_OK:
-
             self._i2c_release()
 
             if rbuf[I2C_INTERNAL_STATUS_BYTE] == I2C_ST_WRADDRL_NACK_STOP:
@@ -2560,7 +2559,7 @@ class Device:
     #######################################################################
     # Reset
     #######################################################################
-    def reset(self, wait=0.5):
+    def reset(self):
         """ Reset MCP2221.
 
         Reboot the device and load stored configuration from flash.
@@ -2568,12 +2567,8 @@ class Device:
         This operation resets only the MCP2221/A chip.
         It won't reset any I2C slave devices connected.
 
-        The reset function waits the specified seconds (default = 0.5) after the command.
+        The reset function waits 0.5 seconds after the command.
         You may need to sleep additional time on your device for USB re-enumeration.
-
-        Parameters:
-            wait (float, optional) Time in seconds to wait before reinitializing (default 0.5 seconds).
-
         """
         buf = [0] * 4
         buf[0] = CMD_RESET_CHIP
@@ -2581,7 +2576,7 @@ class Device:
         buf[2] = RESET_CHIP_VERY_SURE
         buf[3] = RESET_CHIP_VERY_VERY_SURE
         self.send_cmd(buf)
-        time.sleep(wait)
+        time.sleep(0.5)
 
         self.status["i2c_dirty"] = False
 
