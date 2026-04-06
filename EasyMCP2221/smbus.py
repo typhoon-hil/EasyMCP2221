@@ -1,5 +1,6 @@
 from struct import pack, unpack
 import EasyMCP2221
+import random
 
 I2C_SMBUS_BLOCK_MAX = 255  # len is one byte only
 
@@ -33,13 +34,14 @@ crc_lookup_table = [
 ]
 
 
-def crc_calc_smbus (i2c_addr, value, register, size, data_type, endianness="little"):
+def crc_calc_smbus (i2c_addr, value, register, size, data_type, endianness="little", write_cmd=False):
     crc = 0x00
     write_sa = (i2c_addr << 1) | 0
     read_sa = (i2c_addr << 1) | 1
 
-    pec_data = [write_sa, register, read_sa]
+    pec_data = [write_sa, register] if write_cmd else [write_sa, register, read_sa]
     endian = "big" if endianness=="big_endian" else "little"
+
     value_bytes = value.to_bytes(size, byteorder=endian, signed=(data_type=="int"))
     pec_data.extend(value_bytes)
 
@@ -214,7 +216,7 @@ class SMBus(object):
         return data, pec_byte
 
 
-    def write_byte_data(self, i2c_addr, register, value, force=None, data_type="uint", enable_pec=True, endianness="little"):
+    def write_byte_data(self, i2c_addr, register, value, force=None, data_type="uint", enable_pec=True, endianness="little", override_CRC=False):
         """
         Write a byte to a given register.
 
@@ -238,8 +240,13 @@ class SMBus(object):
                 register=register,
                 size=1,
                 data_type=data_type,
-                endianness=endianness
+                endianness=endianness,
+                write_cmd=True,
             )
+            if override_CRC:
+                # generate a number different from pec_value
+                pec_value = (pec_value + random.randint(1, 255)) % 255
+
             data += pack("B", pec_value)
         self._write_register(i2c_addr, register, data)
         return pec_value
@@ -273,7 +280,7 @@ class SMBus(object):
         return data, pec_byte
 
 
-    def write_word_data(self, i2c_addr, register, value, force=None, endianness="little", data_type="uint", enable_pec=False):
+    def write_word_data(self, i2c_addr, register, value, force=None, endianness="little", data_type="uint", enable_pec=False, override_CRC=False):
         """
         Write a single word (2 bytes) to a given register.
 
@@ -301,8 +308,12 @@ class SMBus(object):
                 register=register,
                 size=2,
                 data_type=data_type,
-                endianness=endianness
+                endianness=endianness,
+                write_cmd=True,
             )
+            if override_CRC:
+                pec_value = (pec_value + random.randint(1, 255)) % 255
+
             data += pack("B", pec_value)
 
         self._write_register(i2c_addr, register, data)
